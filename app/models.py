@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models.functions import datetime
 from django.utils import timezone
 import numpy as np
 import pickle
@@ -71,3 +72,24 @@ class AttendanceRecord(models.Model):
 
     def __str__(self):
         return f"{self.student.full_name} - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+
+    @staticmethod
+    def get_daily_stats(date: str):
+
+        start_of_day = timezone.make_aware(datetime.datetime.strptime(date, '%d-%m-%Y'))
+        end_of_day = start_of_day + timezone.timedelta(days=1)
+
+        # Get student for current day
+        records = AttendanceRecord.objects.filter(timestamp__range=(start_of_day, end_of_day))
+
+        total_students = records.values('student').distinct().count()
+
+        present_students = records.filter(recognized=True).count()
+        absent_students = total_students - present_students
+
+        return {
+            'date': date,
+            'total_students': total_students,
+            'present': present_students,
+            'absent': absent_students,
+        }
